@@ -191,7 +191,6 @@ jobs:
             dconf-editor \
             synaptic \
             mission-center \
-            hardinfo2 \
             cpu-x \
             lm-sensors \
             iotop \
