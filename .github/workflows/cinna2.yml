@@ -1,4 +1,4 @@
-name: cinna2
+name: Cinnamon Stable
 
 on:
   workflow_dispatch:
@@ -15,6 +15,9 @@ jobs:
 
     steps:
 
+      - name: Checkout repository (for theme assets)
+        uses: actions/checkout@v4
+
       # ============================================================
       # PREPARE SYSTEM
       # ============================================================
@@ -24,7 +27,7 @@ jobs:
 
           echo ""
           echo "------------------------------------------------------------"
-          echo -e "${C_CYAN}[STEP 01/15] PREPARE SYSTEM${C_NC}"
+          echo -e "${C_CYAN}[STEP 01/16] PREPARE SYSTEM${C_NC}"
           echo "------------------------------------------------------------"
 
           echo -e "${C_YELLOW}[INFO] Disabling needrestart entirely (no noisy logs, no auto-restart)...${C_NC}"
@@ -64,7 +67,7 @@ jobs:
 
           echo ""
           echo "------------------------------------------------------------"
-          echo -e "${C_CYAN}[STEP 02/15] INSTALL CINNAMON DESKTOP (FULL)${C_NC}"
+          echo -e "${C_CYAN}[STEP 02/16] INSTALL CINNAMON DESKTOP (FULL)${C_NC}"
           echo "------------------------------------------------------------"
 
           echo -e "${C_YELLOW}[INFO] Installing full Cinnamon desktop environment...${C_NC}"
@@ -115,7 +118,7 @@ jobs:
 
           echo ""
           echo "------------------------------------------------------------"
-          echo -e "${C_CYAN}[STEP 03/15] SETUP REMOTE USER${C_NC}"
+          echo -e "${C_CYAN}[STEP 03/16] SETUP REMOTE USER${C_NC}"
           echo "------------------------------------------------------------"
 
           echo -e "${C_YELLOW}[INFO] Creating user 'runner'...${C_NC}"
@@ -147,7 +150,7 @@ jobs:
 
           echo ""
           echo "------------------------------------------------------------"
-          echo -e "${C_CYAN}[STEP 04/15] INSTALL GOOGLE CHROME${C_NC}"
+          echo -e "${C_CYAN}[STEP 04/16] INSTALL GOOGLE CHROME${C_NC}"
           echo "------------------------------------------------------------"
 
           echo -e "${C_YELLOW}[INFO] Downloading Google Chrome stable...${C_NC}"
@@ -176,7 +179,7 @@ jobs:
 
           echo ""
           echo "------------------------------------------------------------"
-          echo -e "${C_CYAN}[STEP 05/15] INSTALL VS CODE${C_NC}"
+          echo -e "${C_CYAN}[STEP 05/16] INSTALL VS CODE${C_NC}"
           echo "------------------------------------------------------------"
 
           echo -e "${C_YELLOW}[INFO] Adding Microsoft repository...${C_NC}"
@@ -209,7 +212,7 @@ jobs:
 
           echo ""
           echo "------------------------------------------------------------"
-          echo -e "${C_CYAN}[STEP 06/15] INSTALL OPENCODE CLI${C_NC}"
+          echo -e "${C_CYAN}[STEP 06/16] INSTALL OPENCODE CLI${C_NC}"
           echo "------------------------------------------------------------"
 
           sudo apt-get update
@@ -247,7 +250,7 @@ jobs:
 
           echo ""
           echo "------------------------------------------------------------"
-          echo -e "${C_CYAN}[STEP 07/15] INSTALL OPENCODE DESKTOP${C_NC}"
+          echo -e "${C_CYAN}[STEP 07/16] INSTALL OPENCODE DESKTOP${C_NC}"
           echo "------------------------------------------------------------"
 
           echo -e "${C_YELLOW}[INFO] Downloading OpenCode Desktop (.deb latest)...${C_NC}"
@@ -281,7 +284,7 @@ jobs:
 
           echo ""
           echo "------------------------------------------------------------"
-          echo -e "${C_CYAN}[STEP 08/15] INSTALL CHROME REMOTE DESKTOP${C_NC}"
+          echo -e "${C_CYAN}[STEP 08/16] INSTALL CHROME REMOTE DESKTOP${C_NC}"
           echo "------------------------------------------------------------"
 
           echo -e "${C_YELLOW}[INFO] Adding Google CRD repository...${C_NC}"
@@ -320,7 +323,7 @@ jobs:
 
           echo ""
           echo "------------------------------------------------------------"
-          echo -e "${C_CYAN}[STEP 09/15] CONFIGURE CINNAMON SESSION${C_NC}"
+          echo -e "${C_CYAN}[STEP 09/16] CONFIGURE CINNAMON SESSION${C_NC}"
           echo "------------------------------------------------------------"
 
           echo -e "${C_YELLOW}[INFO] Detecting available Cinnamon session...${C_NC}"
@@ -383,7 +386,7 @@ jobs:
 
           echo ""
           echo "------------------------------------------------------------"
-          echo -e "${C_CYAN}[STEP 10/15] DISABLE SCREENSAVER AND LOCK${C_NC}"
+          echo -e "${C_CYAN}[STEP 10/16] DISABLE SCREENSAVER AND LOCK${C_NC}"
           echo "------------------------------------------------------------"
 
           echo -e "${C_YELLOW}[INFO] Disabling Cinnamon screensaver persistently (no dbus-launch)...${C_NC}"
@@ -407,6 +410,74 @@ jobs:
 
 
       # ============================================================
+      # INSTALL CATPPUCCIN THEME & ZAFIRO ICONS
+      # Extract cinnamon-theme.zip → /usr/share/themes + /usr/share/icons
+      # Apply via gsettings/dconf (Cinnamon schema) + autostart fallback
+      # ============================================================
+      - name: Install Catppuccin Theme & Zafiro Icons
+        run: |
+          C_CYAN='\033[1;36m'; C_GREEN='\033[1;32m'; C_YELLOW='\033[1;33m'; C_RED='\033[1;31m'; C_NC='\033[0m'
+
+          echo ""
+          echo "------------------------------------------------------------"
+          echo -e "${C_CYAN}[STEP 11/16] INSTALL CATPPUCCIN THEME & ZAFIRO ICONS${C_NC}"
+          echo "------------------------------------------------------------"
+
+          echo -e "${C_YELLOW}[INFO] Ensuring unzip is available...${C_NC}"
+          command -v unzip >/dev/null 2>&1 || sudo NEEDRESTART_MODE=l DEBIAN_FRONTEND=noninteractive apt-get install -y unzip
+
+          echo -e "${C_YELLOW}[INFO] Extracting cinnamon-theme.zip to /usr/share/...${C_NC}"
+          if [ ! -f "$GITHUB_WORKSPACE/assets/cinnamon-theme.zip" ]; then
+            echo -e "${C_RED}[FAIL] assets/cinnamon-theme.zip tidak ditemukan (checkout gagal).${C_NC}"
+            exit 1
+          fi
+          sudo unzip -o "$GITHUB_WORKSPACE/assets/cinnamon-theme.zip" \
+            -d /usr/share/ \
+            "themes/*" "icons/*"
+
+          echo -e "${C_YELLOW}[INFO] Verifying extracted files (fail-fast)...${C_NC}"
+          test -d /usr/share/themes/Catppuccin-B-LB-Dark || { echo -e "${C_RED}[FAIL] Theme directory not found.${C_NC}"; exit 1; }
+          test -f /usr/share/themes/Catppuccin-B-LB-Dark/cinnamon/cinnamon.css || { echo -e "${C_RED}[FAIL] cinnamon.css (Cinnamon theme) not found.${C_NC}"; exit 1; }
+          test -d /usr/share/icons/Zafiro-Nord-Black || { echo -e "${C_RED}[FAIL] Icons directory not found.${C_NC}"; exit 1; }
+          ls /usr/share/themes/Catppuccin-B-LB-Dark/index.theme || true
+          ls /usr/share/icons/Zafiro-Nord-Black/index.theme || true
+
+          echo -e "${C_YELLOW}[INFO] Building icon theme cache (performa rendering ikon di software rendering)...${C_NC}"
+          sudo gtk-update-icon-cache /usr/share/icons/Zafiro-Nord-Black || true
+
+          echo -e "${C_YELLOW}[INFO] Applying theme via gsettings (dconf user 'runner', pakai dbus-run-session)...${C_NC}"
+          # dbus-run-session menyediakan session dbus sementara agar gsettings
+          # menulis ke dconf user 'runner', yang dipakai saat CRD session menyala.
+          # Warn-only (|| true): dconf provisioning bisa ditimpa cinnamon-session
+          # saat first-run; fallback autostart set-theme.desktop yang meng-cover.
+          sudo -u runner dbus-run-session -- gsettings set org.cinnamon.theme name 'Catppuccin-B-LB-Dark' || true
+          sudo -u runner dbus-run-session -- gsettings set org.cinnamon.desktop.wm.preferences theme 'Catppuccin-B-LB-Dark' || true
+          sudo -u runner dbus-run-session -- gsettings set org.cinnamon.desktop.interface gtk-theme 'Catppuccin-B-LB-Dark' || true
+          sudo -u runner dbus-run-session -- gsettings set org.cinnamon.desktop.interface icon-theme 'Zafiro-Nord-Black' || true
+          # GTK apps (Chrome, VS Code, terminal, dll) membaca schema GNOME juga:
+          sudo -u runner dbus-run-session -- gsettings set org.gnome.desktop.interface gtk-theme 'Catppuccin-B-LB-Dark' || true
+          sudo -u runner dbus-run-session -- gsettings set org.gnome.desktop.interface icon-theme 'Zafiro-Nord-Black' || true
+
+          echo -e "${C_YELLOW}[INFO] Creating autostart fallback (set-theme.desktop re-apply saat session mulai)...${C_NC}"
+          sudo -u runner mkdir -p /home/runner/.config/autostart
+          sudo -u runner bash -c 'cat > /home/runner/.config/autostart/set-theme.desktop <<EOF
+          [Desktop Entry]
+          Type=Application
+          Name=Set Theme
+          Exec=sh -c "sleep 3; gsettings set org.cinnamon.theme name Catppuccin-B-LB-Dark; gsettings set org.cinnamon.desktop.wm.preferences theme Catppuccin-B-LB-Dark; gsettings set org.cinnamon.desktop.interface gtk-theme Catppuccin-B-LB-Dark; gsettings set org.cinnamon.desktop.interface icon-theme Zafiro-Nord-Black; gsettings set org.gnome.desktop.interface gtk-theme Catppuccin-B-LB-Dark; gsettings set org.gnome.desktop.interface icon-theme Zafiro-Nord-Black"
+          X-GNOME-Autostart-enabled=true
+          Terminal=false
+          EOF'
+
+          echo "------------------------------------------------------------"
+          ls -d /usr/share/themes/Catppuccin-B-LB-Dark/ || true
+          ls -d /usr/share/icons/Zafiro-Nord-Black/ || true
+          ls -l /home/runner/.config/autostart/set-theme.desktop || true
+          echo "------------------------------------------------------------"
+          echo -e "${C_GREEN}[OK] Catppuccin-B-LB-Dark theme + Zafiro-Nord-Black icons installed (Cinnamon via dconf).${C_NC}"
+
+
+      # ============================================================
       # CREATE DESKTOP SHORTCUTS
       # ============================================================
       - name: Create Desktop Shortcuts
@@ -415,7 +486,7 @@ jobs:
 
           echo ""
           echo "------------------------------------------------------------"
-          echo -e "${C_CYAN}[STEP 11/15] CREATE DESKTOP SHORTCUTS${C_NC}"
+          echo -e "${C_CYAN}[STEP 12/16] CREATE DESKTOP SHORTCUTS${C_NC}"
           echo "------------------------------------------------------------"
 
           echo -e "${C_YELLOW}[INFO] Creating Antigravity shortcut...${C_NC}"
@@ -505,7 +576,7 @@ jobs:
 
           echo ""
           echo "------------------------------------------------------------"
-          echo -e "${C_CYAN}[STEP 12/15] SET WALLPAPER${C_NC}"
+          echo -e "${C_CYAN}[STEP 13/16] SET WALLPAPER${C_NC}"
           echo "------------------------------------------------------------"
 
           echo -e "${C_YELLOW}[INFO] Downloading Catppuccin 'black unicat' wallpaper...${C_NC}"
@@ -560,7 +631,7 @@ jobs:
 
           echo ""
           echo "------------------------------------------------------------"
-          echo -e "${C_CYAN}[STEP 13/15] CONFIGURE CRD PIN${C_NC}"
+          echo -e "${C_CYAN}[STEP 14/16] CONFIGURE CRD PIN${C_NC}"
           echo "------------------------------------------------------------"
 
           if [ -n "$CUSTOM_CRD_PIN" ]; then
@@ -596,7 +667,7 @@ jobs:
 
           echo ""
           echo "------------------------------------------------------------"
-          echo -e "${C_CYAN}[STEP 14/15] REGISTER CHROME REMOTE DESKTOP${C_NC}"
+          echo -e "${C_CYAN}[STEP 15/16] REGISTER CHROME REMOTE DESKTOP${C_NC}"
           echo "------------------------------------------------------------"
 
           echo -e "${C_YELLOW}[INFO] Validating host command input...${C_NC}"
@@ -636,7 +707,7 @@ jobs:
 
           echo ""
           echo "------------------------------------------------------------"
-          echo -e "${C_CYAN}[STEP 15/15] VERIFY INSTALLATION${C_NC}"
+          echo -e "${C_CYAN}[STEP 16/16] VERIFY INSTALLATION${C_NC}"
           echo "------------------------------------------------------------"
 
           echo "::group::[CHECK] System"
@@ -662,6 +733,18 @@ jobs:
           echo "--- no Xsession/lightdm wrapper allowed ---"
           grep -r "Xsession\|lightdm" /home/runner/.chrome-remote-desktop-session && echo "[FAIL] session file masih pakai wrapper!" && exit 1 || echo "[OK] session file direct exec, bersih"
           grep -q "exec /usr/bin/cinnamon-session --session cinnamon" /home/runner/.chrome-remote-desktop-session || { echo "[FAIL] exec line tidak sesuai harapan!"; exit 1; }
+          echo "::endgroup::"
+
+          echo "::group::[CHECK] Catppuccin Theme & Zafiro Icons"
+          test -d /usr/share/themes/Catppuccin-B-LB-Dark || { echo "[FAIL] theme dir /usr/share/themes/Catppuccin-B-LB-Dark missing!"; exit 1; }
+          ls -l /usr/share/themes/Catppuccin-B-LB-Dark/cinnamon/cinnamon.css || true
+          test -d /usr/share/icons/Zafiro-Nord-Black || { echo "[FAIL] icons dir /usr/share/icons/Zafiro-Nord-Black missing!"; exit 1; }
+          ls -l /usr/share/icons/Zafiro-Nord-Black/index.theme || true
+          ls -l /home/runner/.config/autostart/set-theme.desktop || true
+          echo "--- applied theme (warn-only; bisa terlihat 'default' sampai sesi pertama login) ---"
+          sudo -u runner dbus-run-session -- gsettings get org.cinnamon.theme name || true
+          sudo -u runner dbus-run-session -- gsettings get org.cinnamon.desktop.interface gtk-theme || true
+          sudo -u runner dbus-run-session -- gsettings get org.cinnamon.desktop.interface icon-theme || true
           echo "::endgroup::"
 
           echo "::group::[CHECK] Google Chrome"
